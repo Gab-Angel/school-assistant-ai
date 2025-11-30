@@ -1,0 +1,16 @@
+import psycopg2
+import psycopg2.extras  # ← adicione esta linha
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def get_vector_conn():
+    return psycopg2.connect(
+        host=os.getenv("IP_VPS"),
+        port=5432,
+        user=os.getenv("POSTGRES_USER"),
+        password=os.getenv("PGVECTOR_PASSWORD"),
+        dbname=os.getenv("POSTGRES_DB"),
+        cursor_factory=psycopg2.extras.RealDictCursor  # ← mude esta linha
+    )

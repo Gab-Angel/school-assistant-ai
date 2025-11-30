@@ -4,14 +4,14 @@ from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
 from langchain.tools import tool
 from agent_assistant.integrations import llm_groq, url, headers
-from postgres.criar_user import salvar_user
-from postgres.chat_ia import salvar_mensagem
-from postgres.verificar_user import usuario_existe
-from postgres.atualizar_user import atualizar_user
+from postgres_pgvector.criar_user import salvar_user
+from postgres_pgvector.chat_ia import salvar_mensagem
+from postgres_pgvector.verificar_user import usuario_existe
+from postgres_pgvector.atualizar_user import atualizar_user
 from evolution.sender_message import enviar_texto, fatiar_texto
-from postgres.get_historico import get_historico
+from postgres_pgvector.get_historico import get_historico
 from agent_assistant.agent_base import agente_base
-from postgres.buscar_faq import buscar_faq_no_banco
+from rag.busca_semantica import buscar_contexto_similar, formatar_contexto
 import os
 
 prompt_ia = ""
@@ -27,38 +27,29 @@ current_numero = None
 
 
 @tool(description="""
-      Busca perguntas e respostas no FAQ da escola a partir de uma categoria informada. 
-      Retorna apenas os registros ativos dessa categoria já formatados para envio ao usuário. 
-      Use esta ferramenta quando a pessoa pedir informações relacionadas à:
+      Use essa tool para buscar informações relevantes no banco de conhecimento da escola usando busca semântica. 
+      Retorna os textos mais relacionados à pergunta do usuário.
+      Use esta ferramenta quando a pessoa pedir informações relacionadas à categoria:
+
     - sobre_escola  
-    - cursos
-    - infraestrutura
-    - eventos
-    - conquistas
-    - programas
-    - contato
+      
+      Parametros para preencher:
+      pergunta: a pergunta do usuário
+      categoria: a categoria relacionada a pergunta do user (sobre_escola)
       """)
-def tool_buscar_faq(categoria: str) -> str:
-    print(f"Categoria escolhida {categoria}")
-    try:
-        resultados = buscar_faq_no_banco(categoria)
-
-        if not resultados:
-            return (
-                f"Não encontrei informações na categoria '{categoria}'. "
-                "Tente outra categoria ou entre em contato com a secretaria."
-            )
-        
-        # Formata as respostas
-        texto_resposta = "\n\n".join([
-            f"📌 {row['pergunta']}\n{row['resposta']}"
-            for row in resultados
-        ])
-
-        return texto_resposta
-
-    except Exception:
-        return "Desculpe, ocorreu um erro ao buscar as informações. Tente novamente."
+def tool_buscar_info(pergunta: str, categoria: str = 'sobre_escola') -> str:
+    
+    print(f"Pergunta: {pergunta}")
+    print(f"Categoria: {categoria}")
+    
+    resultados = buscar_contexto_similar(
+        pergunta=pergunta,
+        categoria=categoria,
+        limite=3,
+        similaridade_minima=0.65
+    )
+    
+    return formatar_contexto(resultados)
 
 @tool(description="""
 
@@ -97,7 +88,7 @@ def tool_atualizar_user(nome: str, tipo_usuario: str, turma_serie: str) -> str:
         return f"Erro ao atualizar dados do usuário: {str(e)}"
 
 
-tools = [tool_buscar_faq, tool_buscar_arquivo, tool_atualizar_user]
+tools = [tool_buscar_info, tool_buscar_arquivo, tool_atualizar_user]
 tool_node = ToolNode(tools)
 llm_com_tools = llm_groq.bind_tools(tools)
 

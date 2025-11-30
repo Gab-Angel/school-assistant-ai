@@ -1,17 +1,18 @@
-from postgres.conection_postgres import get_conn
+from postgres_pgvector.conection_pgvector import get_vector_conn
 
 
 def usuario_existe(numero: str) -> bool:
-    conn = get_conn()
+    conn = get_vector_conn()
+    cursor = conn.cursor()
 
     try:
-        cur = conn.execute("""
+        cursor.execute("""
             SELECT numero
             FROM users
             WHERE numero = %s
         """, (numero,))
 
-        row = cur.fetchone()
+        row = cursor.fetchone()
         return row is not None
 
     except Exception as e:
@@ -19,4 +20,5 @@ def usuario_existe(numero: str) -> bool:
         return False
 
     finally:
+        cursor.close()
         conn.close()

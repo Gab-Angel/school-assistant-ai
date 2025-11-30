@@ -1,4 +1,4 @@
-from postgres.conection_postgres import get_conn
+from postgres_pgvector.conection_pgvector import get_vector_conn
 
 
 def atualizar_user(
@@ -7,10 +7,11 @@ def atualizar_user(
     tipo_usuario: str | None,
     turma_serie: str | None
 ):
-    conn = get_conn()
+    conn = get_vector_conn()
+    cursor = conn.cursor()  # ← adicionar cursor
 
     try:
-        conn.execute("""
+        cursor.execute("""
             UPDATE users
             SET 
                 nome = COALESCE(%s, nome),
@@ -27,4 +28,5 @@ def atualizar_user(
         print(f"❌ Erro ao atualizar usuário: {e}")
 
     finally:
+        cursor.close()  # ← fechar cursor
         conn.close()

@@ -1,12 +1,13 @@
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from postgres.conection_postgres import get_conn
+from postgres_pgvector.conection_pgvector import get_vector_conn
 
 
 def get_historico(numero: str):
-    conn = get_conn()
+    conn = get_vector_conn()
+    cursor = conn.cursor()
 
     try:
-        cur = conn.execute("""
+        cursor.execute("""
             SELECT message 
             FROM chat_ia
             WHERE session_id = %s
@@ -14,7 +15,7 @@ def get_historico(numero: str):
             LIMIT 20
         """, (numero,))
 
-        rows = cur.fetchall()
+        rows = cursor.fetchall()  
         historico = []
 
         for row in rows:
@@ -27,7 +28,10 @@ def get_historico(numero: str):
                 historico.append(AIMessage(content=msg["content"]))
 
             elif msg["type"] == "tool":
-                historico.append(ToolMessage(content=msg["content"]))
+                historico.append(ToolMessage(
+                    content=msg["content"],
+                    tool_call_id=msg.get("tool_call_id", "") 
+                ))
 
         return historico
 
@@ -36,4 +40,5 @@ def get_historico(numero: str):
         return []
 
     finally:
+        cursor.close() 
         conn.close()

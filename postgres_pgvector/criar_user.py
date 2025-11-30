@@ -2,8 +2,8 @@
 # FUNÇÃO DE SALVAR USUÁRIO
 # =================================================
 
-from postgres.conection_postgres import get_conn
-from psycopg.types.json import Json
+from postgres_pgvector.conection_pgvector import get_vector_conn
+import json  
 
 
 def salvar_user(
@@ -16,15 +16,15 @@ def salvar_user(
     if metadata is None:
         metadata = {}
 
-    conn = get_conn()
+    conn = get_vector_conn()
+    cursor = conn.cursor()  
 
     try:
-        conn.execute("""
+        cursor.execute("""
             INSERT INTO users (numero, nome, tipo_usuario, turma_serie, metadata)
             VALUES (%s, %s, %s, %s, %s)
             ON CONFLICT (numero) DO NOTHING
-        """, (numero, nome, tipo_usuario, turma_serie, Json(metadata)))
-
+        """, (numero, nome, tipo_usuario, turma_serie, json.dumps(metadata)))  
         conn.commit()
         print(f"✅ Usuário {numero} salvo com sucesso")
 
@@ -32,5 +32,5 @@ def salvar_user(
         print(f"❌ Erro ao salvar usuário: {e}")
 
     finally:
-        
+        cursor.close()  
         conn.close()

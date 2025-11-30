@@ -3,7 +3,7 @@ from langchain_core.messages import HumanMessage
 
 from agent_assistant.main import grafo
 from redis_past.buffer_redis import adicionar_ao_buffer, iniciar_ouvinte_background
-from agent.audio_transcription import audio_transcription
+from agent_assistant.audio_transcription import audio_transcription
 
 app = Flask(__name__)
 
