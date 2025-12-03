@@ -1,5 +1,5 @@
 import psycopg2
-import psycopg2.extras  # ← adicione esta linha
+import psycopg2.extras  
 import os
 from dotenv import load_dotenv
 
@@ -12,5 +12,5 @@ def get_vector_conn():
         user=os.getenv("POSTGRES_USER"),
         password=os.getenv("PGVECTOR_PASSWORD"),
         dbname=os.getenv("POSTGRES_DB"),
-        cursor_factory=psycopg2.extras.RealDictCursor  # ← mude esta linha
+        cursor_factory=psycopg2.extras.RealDictCursor  
     )

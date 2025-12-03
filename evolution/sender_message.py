@@ -4,7 +4,8 @@ def enviar_texto(numero: str, texto: str, url: str, headers: dict):
     payload = {
         "number": numero,
         "text": texto,
-        "delay": 2000
+        "delay": 2000,
+        "presence": "composing"
     }
 
     try:

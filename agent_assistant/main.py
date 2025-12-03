@@ -3,7 +3,7 @@ from typing import TypedDict, Annotated, Optional
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
 from langchain.tools import tool
-from agent_assistant.integrations import llm_groq, url, headers
+from agent_assistant.integrations import llm_groq, url_sendText, headers
 from postgres_pgvector.criar_user import salvar_user
 from postgres_pgvector.chat_ia import salvar_mensagem
 from postgres_pgvector.verificar_user import usuario_existe
@@ -13,6 +13,9 @@ from postgres_pgvector.get_historico import get_historico
 from agent_assistant.agent_base import agente_base
 from rag.busca_semantica import buscar_contexto_similar, formatar_contexto
 import os
+from postgres_pgvector.buscar_arquivo import buscar_arquivo_bd
+from evolution.sender_file import enviar_arquivo_whatsapp
+
 
 prompt_ia = ""
 
@@ -24,6 +27,12 @@ with open(PROMPT_PATH, "r", encoding="utf-8") as file:
 
 # Variável global para armazenar o número atual
 current_numero = None
+
+class Estado(TypedDict):
+    mensagem: Annotated[list, add_messages]
+    numero: str
+    tipo: str
+    prompt: Optional[str]
 
 
 @tool(description="""
@@ -51,11 +60,43 @@ def tool_buscar_info(pergunta: str, categoria: str = 'sobre_escola') -> str:
     
     return formatar_contexto(resultados)
 
-@tool(description="""
 
+@tool(description="""
+Use essa tool para buscar por arquivos no bd de acordo com o pedido do usuário
+De acordo com a interpretação do pedido voce tem essas categorias:
+      - horario
+Parametros:
+      numero: o numero do usuário
+      categoria: a categoria do pedido do usuário(de acordo com as categorias existentes)
 """)
-def tool_buscar_arquivo():
-    return
+def tool_buscar_arquivo(numero: str, categoria: str):
+
+    try:
+        resultado = buscar_arquivo_bd(categoria)
+
+        if not resultado:
+            return f"Nenhum arquivo encontrado para a categoria '{categoria}'."
+        print(resultado)
+
+        fileName = resultado['filename']
+        mediaType = resultado['mediatype']
+        caminho = resultado['caminho']
+
+        print(f'📄 Enviando arquivo: {fileName}')
+        print(f'📂 Caminho: {caminho}')
+
+        enviar_arquivo_whatsapp(
+            numero=numero, 
+            mediaType=mediaType, 
+            fileName=fileName, 
+            media=caminho
+        )
+
+        return f"Arquivo '{fileName}' enviado com sucesso."
+
+    except Exception as e:
+        return f"Erro ao processar solicitação: {str(e)}"
+
 
 @tool(description="""
 Atualiza os dados cadastrais do usuário no sistema da escola.
@@ -98,7 +139,6 @@ class Estado(TypedDict):
     numero: str
     tipo: str
     prompt: Optional[str]
-
 
 def node_salvar_usuario(state: Estado):
     numero = state["numero"]
@@ -171,7 +211,7 @@ def node_enviar_mensagem(state):
     frases = fatiar_texto(texto)
 
     for frase in frases:
-        enviar_texto(numero=numero, texto=frase, url=url, headers=headers)
+        enviar_texto(numero=numero, texto=frase, url=url_sendText, headers=headers)
 
     return state
 

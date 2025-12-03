@@ -1,4 +1,4 @@
-from conection_pgvector import get_vector_conn
+from postgres_pgvector.conection_pgvector import get_vector_conn
 
 
 def create_tables_pgvector():
@@ -52,18 +52,44 @@ def create_tables_pgvector():
     ON rag_embeddings
     USING hnsw (embedding vector_cosine_ops);
 
-
     -- ============================
     -- ÍNDICE PARA FILTRAR POR CATEGORIA
-    -- ============================
+    -- ============================ 
     CREATE INDEX IF NOT EXISTS rag_categoria_idx
     ON rag_embeddings (categoria);
+
+    
+    -- ============================
+    -- TABELA DE ARQUIVOS (ENVIO POR IA)
+    -- ============================
+    CREATE TABLE IF NOT EXISTS arquivos (
+        id SERIAL PRIMARY KEY,
+        categoria VARCHAR(100) NOT NULL,      
+        fileName VARCHAR(255) NOT NULL,       
+        mediaType VARCHAR(20) NOT NULL,     
+        caminho VARCHAR NOT NULL,              
+
+        criado_em TIMESTAMP DEFAULT NOW()
+    );
+
+    -- ============================
+    -- ÍNDICES PARA PERFORMANCE
+    -- ============================
+    CREATE INDEX IF NOT EXISTS arquivos_categoria_idx
+    ON arquivos (categoria);
+
+    CREATE INDEX IF NOT EXISTS arquivos_mediaType_idx
+    ON arquivos (mediaType);
+
+    CREATE INDEX IF NOT EXISTS arquivos_fileName_idx
+    ON arquivos (fileName);
+    
     """
 
     try:
         cursor.execute(sql)
         conn.commit()
-        print("✅ Tabelas RAG + pgvector criadas com sucesso!")
+        print("✅ Tabelas RAG + pgvector + arquivos criadas com sucesso!")
     except Exception as e:
         conn.rollback()
         print(f"❌ Erro ao criar tabelas: {e}")

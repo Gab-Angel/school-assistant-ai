@@ -4,8 +4,8 @@ from langchain_core.messages import SystemMessage
 def agente_base(
     state,
     prompt_ia: str,
-    llm_model,               # Ex: llm_com_tools
-    get_historico_func       # Função de carregar histórico do Postgres
+    llm_model,               
+    get_historico_func      
 ):
     numero = state["numero"]
 
