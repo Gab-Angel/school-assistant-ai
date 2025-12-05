@@ -91,6 +91,7 @@ async def webhook(request: Request):
     try:
         dados = await request.json()
         messageType = dados['data'].get('messageType')
+        print(dados)
         
         if dados:
             if messageType == 'conversation':
@@ -105,6 +106,9 @@ async def webhook(request: Request):
                 mensagem = None
             
             remoteJid = dados['data']["key"].get("remoteJid")
+            """if "@lid" in remoteJid:
+                numero = remoteJid
+            else:"""
             numero = remoteJid.split('@')[0]
         
             print(f"📲 Mensagem de: {numero}")
