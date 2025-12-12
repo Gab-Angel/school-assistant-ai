@@ -91,7 +91,7 @@ async def webhook(request: Request):
     try:
         dados = await request.json()
         messageType = dados['data'].get('messageType')
-        print(dados)
+        #print(dados)
         
         if dados:
             if messageType == 'conversation':
