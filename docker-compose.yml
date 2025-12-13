@@ -2,13 +2,13 @@ services:
 
   db:
     image: ankane/pgvector:v0.5.1
+    command: postgres -c 'shared_preload_libraries=vector'
     volumes:
       - db_data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB} 
-    command: postgres -c 'shared_preload_libraries=vector'
+      POSTGRES_DB: ${POSTGRES_DB}
 
   redis:
     image: redis:7-alpine
@@ -16,38 +16,70 @@ services:
     volumes:
       - redis_data:/data
 
-  evolution:
+  evolution-api:
     image: evoapicloud/evolution-api:v2.3.3
+    restart: always
+    depends_on:
+      - db
+      - redis
     expose:
-      - "8081" 
+      - "8081"
+    volumes:
+      - evolution_instances:/evolution/instances
     environment:
-      SECRET_KEY: ${EVOLUTION_SECRET_KEY}
-      API_TOKEN_GLOBAL_EVO: ${API_TOKEN_GLOBAL_EVO}
+      # Base
+      SERVER_URL: https://school-agent-evolution-api.tszlmi.easypanel.host
+
+      # Auth
+      AUTHENTICATION_API_KEY: ${API_KEY_EVO}
+
+      # Database (OBRIGATÓRIO)
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/evolution
+      DATABASE_CONNECTION_CLIENT_NAME: evolution
+
+      # Redis (OBRIGATÓRIO)
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://default:${SENHA_REDIS}@redis:6379/5
+      CACHE_REDIS_PREFIX_KEY: evolution
+
+      # Sessão / QR
+      QRCODE_LIMIT: 2
+      LANGUAGE: pt-BR
+
+  evolution-manager:
+    image: evoapicloud/evolution-manager:latest
+    restart: always
+    depends_on:
+      - evolution-api
+    expose:
+      - "80"
 
   app:
     build: .
+    restart: always
     expose:
       - "8001"
     depends_on:
       - db
       - redis
-      - evolution
+      - evolution-api
     environment:
-      # PostgreSQL (usando nomes que seu código espera)
+      # PostgreSQL
       POSTGRES_HOST: db
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGVECTOR_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      
-      # Redis (usando nomes que seu código espera)
-      SENHA_REDIS: ${SENHA_REDIS}
+      PGVECTOR_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Redis
       REDIS_HOST: redis
-      
-      # Evolution API (usando nomes que seu código espera)
-      BASE_URL_EVO: http://evolution:8081
+      SENHA_REDIS: ${SENHA_REDIS}
+
+      # Evolution API
+      BASE_URL_EVO: http://evolution-api:8081
       API_KEY_EVO: ${API_KEY_EVO}
-      API_TOKEN_GLOBAL_EVO: ${API_TOKEN_GLOBAL_EVO}
 
       # APIs externas
       GROQ_API_KEY: ${GROQ_API_KEY}
@@ -57,3 +89,4 @@ services:
 volumes:
   db_data:
   redis_data:
+  evolution_instances:
