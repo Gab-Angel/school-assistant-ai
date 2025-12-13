@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+
+  db:
+    image: ankane/pgvector:v0.5.1
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432" 
+    command: postgres -c 'shared_preload_libraries=vector'
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${SENHA_REDIS} --notify-keyspace-events Ex
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.3
+    container_name: evolution
+    ports:
+      - "8081:8080" 
+    environment:
+      SECRET_KEY: ${EVOLUTION_SECRET_KEY}
+      API_TOKEN_GLOBAL_EVO: ${API_TOKEN_GLOBAL_EVO}
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+      - evolution
+    environment:
+      # PostgreSQL (usando nomes que seu código espera)
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGVECTOR_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      
+      # Redis (usando nomes que seu código espera)
+      SENHA_REDIS: ${SENHA_REDIS}
+      REDIS_HOST: redis
+      
+      # Evolution API (usando nomes que seu código espera)
+      BASE_URL_EVO: http://evolution:8080
+      API_KEY_EVO: ${API_KEY_EVO}
+      EVOLUTION_API_TOKEN_GLOBAL: ${EVOLUTION_API_TOKEN_GLOBAL}
+
+      # APIs externas
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      BEARER_AUDIO_TRANSCRIPTION: ${BEARER_AUDIO_TRANSCRIPTION}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+volumes:
+  db_data:
+  redis_data:

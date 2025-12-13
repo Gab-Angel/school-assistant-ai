@@ -7,7 +7,7 @@ load_dotenv()
 
 def get_vector_conn():
     return psycopg2.connect(
-        host=os.getenv("IP_VPS"),
+        host=os.getenv("POSTGRES_HOST"),
         port=5432,
         user=os.getenv("POSTGRES_USER"),
         password=os.getenv("PGVECTOR_PASSWORD"),

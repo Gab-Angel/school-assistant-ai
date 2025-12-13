@@ -9,7 +9,7 @@ load_dotenv()
 
 # --- Configurações ---
 redis_client = redis.Redis(
-    host=os.getenv("IP_VPS"), 
+    host=os.getenv("REDIS_HOST"), 
     port=6379, 
     password=os.getenv("SENHA_REDIS"), 
     db=0, 
