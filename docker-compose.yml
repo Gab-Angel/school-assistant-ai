@@ -17,8 +17,6 @@ services:
     command: redis-server --requirepass ${SENHA_REDIS} --notify-keyspace-events Ex
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
 
   evolution:
     image: evoapicloud/evolution-api:v2.3.3
