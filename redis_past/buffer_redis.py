@@ -44,9 +44,8 @@ async def ouvinte_de_expiracao(callback: Callable[[str, str], Awaitable[None]]):
     pubsub = redis_client.pubsub()
     pubsub.subscribe(f"__keyevent@{redis_client.connection_pool.connection_kwargs['db']}__:expired")
 
-    while True:
-        mensagem = pubsub.get_message(ignore_subscribe_messages=True)
-        if mensagem and mensagem['data'].startswith("buffer:trigger:"):
+    for mensagem in pubsub.listen():
+        if mensagem['type'] == 'message' and mensagem['data'].startswith("buffer:trigger:"):
             # Extrai o número da chave do gatilho que expirou
             numero = mensagem['data'].split(":")[2]
             chave_conteudo = f"buffer:content:{numero}"
