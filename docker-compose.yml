@@ -1,92 +1,29 @@
 services:
-
-  db:
-    image: ankane/pgvector:v0.5.1
-    command: postgres -c 'shared_preload_libraries=vector'
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --requirepass ${SENHA_REDIS} --notify-keyspace-events Ex
-    volumes:
-      - redis_data:/data
-
-  evolution-api:
-    image: evoapicloud/evolution-api:v2.3.3
-    restart: always
-    depends_on:
-      - db
-      - redis
-    expose:
-      - "8080"
-    volumes:
-      - evolution_instances:/evolution/instances
-    environment:
-      # Base
-      SERVER_URL: ${SERVER_URL}
-
-      # Auth
-      AUTHENTICATION_API_KEY: ${API_KEY_EVO}
-
-      # Database (OBRIGATÓRIO)
-      DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/evolution
-      DATABASE_CONNECTION_CLIENT_NAME: evolution
-
-      # Redis (OBRIGATÓRIO)
-      CACHE_REDIS_ENABLED: "true"
-      CACHE_REDIS_URI: redis://default:${SENHA_REDIS}@redis:6379/5
-      CACHE_REDIS_PREFIX_KEY: evolution
-
-      # Sessão / QR
-      QRCODE_LIMIT: 2
-      LANGUAGE: pt-BR
-
-  evolution-manager:
-    image: evoapicloud/evolution-manager:latest
-    restart: always
-    depends_on:
-      - evolution-api
-    expose:
-      - "80"
-
   app:
     build: .
     restart: always
+
     expose:
       - "8001"
-    depends_on:
-      - db
-      - redis
-      - evolution-api
+
     environment:
       # PostgreSQL
-      POSTGRES_HOST: db
+      POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      PGVECTOR_PASSWORD: ${POSTGRES_PASSWORD}
+      PGVECTOR_PASSWORD: ${PGVECTOR_PASSWORD}
 
       # Redis
-      REDIS_HOST: redis
+      REDIS_HOST: ${REDIS_HOST}
       SENHA_REDIS: ${SENHA_REDIS}
 
       # Evolution API
       BASE_URL_EVO: ${BASE_URL_EVO}
       API_KEY_EVO: ${API_KEY_EVO}
+      API_TOKEN_GLOBAL_EVO: ${API_TOKEN_GLOBAL_EVO}
+      INSTANCE_NAME: ${INSTANCE_NAME}
 
       # APIs externas
       GROQ_API_KEY: ${GROQ_API_KEY}
       BEARER_AUDIO_TRANSCRIPTION: ${BEARER_AUDIO_TRANSCRIPTION}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-
-volumes:
-  db_data:
-  redis_data:
-  evolution_instances:

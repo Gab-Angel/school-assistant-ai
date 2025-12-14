@@ -7,8 +7,10 @@ load_dotenv()
 # CONEXÃO COM EVOLUTION
 base_url_evo = os.getenv("BASE_URL_EVO")
 instance_token = os.getenv("API_KEY_EVO") 
-url_sendText = f"{base_url_evo}/message/sendText/agentei_ia"
-url_sendMedia = f"{base_url_evo}/message/sendMedia/agentei_ia" 
+instance_name = os.getenv("INSTANCE_NAME")
+
+url_sendText = f"{base_url_evo}/message/sendText/{instance_name}"
+url_sendMedia = f"{base_url_evo}/message/sendMedia/{instance_name}" 
 headers = {
     "Content-Type": "application/json",
     "apikey": instance_token
