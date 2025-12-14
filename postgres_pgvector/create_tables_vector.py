@@ -1,102 +1,78 @@
+import time
 from postgres_pgvector.conection_pgvector import get_vector_conn
 
 
-def create_tables_pgvector():
-    conn = get_vector_conn()
-    cursor = conn.cursor()
+def create_tables_pgvector(retries=10, delay=3):
+    for attempt in range(1, retries + 1):
+        try:
+            conn = get_vector_conn()
+            cursor = conn.cursor()
 
-    sql = """
-    -- Ativa extensão pgvector
-    CREATE EXTENSION IF NOT EXISTS vector;
+            sql = """
+            CREATE EXTENSION IF NOT EXISTS vector;
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-    -- =========================
-    -- TABELA DE USUÁRIOS
-    -- =========================
-    CREATE TABLE IF NOT EXISTS users (
-        numero VARCHAR(20) PRIMARY KEY,
-        nome VARCHAR(200),
-        tipo_usuario VARCHAR(20),
-        turma_serie VARCHAR(50),
-        metadata JSONB DEFAULT '{}',
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-    );
+            CREATE TABLE IF NOT EXISTS users (
+                numero VARCHAR(20) PRIMARY KEY,
+                nome VARCHAR(200),
+                tipo_usuario VARCHAR(20),
+                turma_serie VARCHAR(50),
+                metadata JSONB DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            );
 
+            CREATE TABLE IF NOT EXISTS chat_ia (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(20),
+                message JSONB NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
 
-    -- =========================
-    -- HISTÓRICO DE CHAT
-    -- =========================
-    CREATE TABLE IF NOT EXISTS chat_ia (
-        id SERIAL PRIMARY KEY,
-        session_id VARCHAR(20),
-        message JSONB NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-    );
+            CREATE TABLE IF NOT EXISTS rag_embeddings (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                content TEXT NOT NULL,
+                categoria VARCHAR(100),
+                embedding VECTOR(768),
+                created_at TIMESTAMP DEFAULT NOW()
+            );
 
+            CREATE INDEX IF NOT EXISTS rag_embedding_idx
+            ON rag_embeddings
+            USING hnsw (embedding vector_cosine_ops);
 
-    -- ============================
-    -- TABELA DE EMBEDDINGS (RAG)
-    -- ============================
-    CREATE TABLE IF NOT EXISTS rag_embeddings (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        content TEXT NOT NULL,
-        categoria VARCHAR(100),
-        embedding VECTOR(768),  -- ajuste conforme o modelo de embedding
-        created_at TIMESTAMP DEFAULT NOW()
-    );
+            CREATE INDEX IF NOT EXISTS rag_categoria_idx
+            ON rag_embeddings (categoria);
 
-    -- ============================
-    -- ÍNDICE VETORIAL (BUSCA RÁPIDA)
-    -- ============================
-    CREATE INDEX IF NOT EXISTS rag_embedding_idx
-    ON rag_embeddings
-    USING hnsw (embedding vector_cosine_ops);
+            CREATE TABLE IF NOT EXISTS arquivos (
+                id SERIAL PRIMARY KEY,
+                categoria VARCHAR(100) NOT NULL,
+                fileName VARCHAR(255) NOT NULL,
+                mediaType VARCHAR(20) NOT NULL,
+                caminho VARCHAR NOT NULL,
+                criado_em TIMESTAMP DEFAULT NOW()
+            );
 
-    -- ============================
-    -- ÍNDICE PARA FILTRAR POR CATEGORIA
-    -- ============================ 
-    CREATE INDEX IF NOT EXISTS rag_categoria_idx
-    ON rag_embeddings (categoria);
+            CREATE INDEX IF NOT EXISTS arquivos_categoria_idx
+            ON arquivos (categoria);
 
-    
-    -- ============================
-    -- TABELA DE ARQUIVOS (ENVIO POR IA)
-    -- ============================
-    CREATE TABLE IF NOT EXISTS arquivos (
-        id SERIAL PRIMARY KEY,
-        categoria VARCHAR(100) NOT NULL,      
-        fileName VARCHAR(255) NOT NULL,       
-        mediaType VARCHAR(20) NOT NULL,     
-        caminho VARCHAR NOT NULL,              
+            CREATE INDEX IF NOT EXISTS arquivos_mediaType_idx
+            ON arquivos (mediaType);
 
-        criado_em TIMESTAMP DEFAULT NOW()
-    );
+            CREATE INDEX IF NOT EXISTS arquivos_fileName_idx
+            ON arquivos (fileName);
+            """
 
-    -- ============================
-    -- ÍNDICES PARA PERFORMANCE
-    -- ============================
-    CREATE INDEX IF NOT EXISTS arquivos_categoria_idx
-    ON arquivos (categoria);
+            cursor.execute(sql)
+            conn.commit()
+            cursor.close()
+            conn.close()
 
-    CREATE INDEX IF NOT EXISTS arquivos_mediaType_idx
-    ON arquivos (mediaType);
+            print("✅ Banco inicializado com sucesso!")
+            return
 
-    CREATE INDEX IF NOT EXISTS arquivos_fileName_idx
-    ON arquivos (fileName);
-    
-    """
+        except Exception as e:
+            print(f"⏳ Banco não disponível (tentativa {attempt}/{retries}): {e}")
+            time.sleep(delay)
 
-    try:
-        cursor.execute(sql)
-        conn.commit()
-        print("✅ Tabelas RAG + pgvector + arquivos criadas com sucesso!")
-    except Exception as e:
-        conn.rollback()
-        print(f"❌ Erro ao criar tabelas: {e}")
-    finally:
-        cursor.close()
-        conn.close()
-
-
-if __name__ == "__main__":
-    create_tables_pgvector()
+    raise RuntimeError("❌ Não foi possível conectar ao banco após várias tentativas")
