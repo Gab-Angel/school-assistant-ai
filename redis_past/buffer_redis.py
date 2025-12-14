@@ -42,10 +42,15 @@ async def ouvinte_de_expiracao(callback: Callable[[str, str], Awaitable[None]]):
     """
     print(">>> Ouvinte de expiração iniciado...")
     pubsub = redis_client.pubsub()
-    pubsub.subscribe(f"__keyevent@{redis_client.connection_pool.connection_kwargs['db']}__:expired")
+    canal = f"__keyevent@{redis_client.connection_pool.connection_kwargs['db']}__:expired"
+    print(f"🔔 Inscrito no canal: {canal}")
+    pubsub.subscribe(canal)
 
     for mensagem in pubsub.listen():
+        print(f"📨 Mensagem recebida: {mensagem}")
+        
         if mensagem['type'] == 'message' and mensagem['data'].startswith("buffer:trigger:"):
+            print(f"✅ Gatilho detectado: {mensagem['data']}")
             # Extrai o número da chave do gatilho que expirou
             numero = mensagem['data'].split(":")[2]
             chave_conteudo = f"buffer:content:{numero}"
@@ -57,6 +62,7 @@ async def ouvinte_de_expiracao(callback: Callable[[str, str], Awaitable[None]]):
                 mensagens_lista = json.loads(mensagens_json)
                 texto_final = " ".join(filter(None, map(str, mensagens_lista)))
                 
+                print(f"🔄 Processando para {numero}: {texto_final}")
                 # Chama a função principal do seu agente
                 await callback(numero, texto_final)
                 
