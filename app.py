@@ -7,6 +7,8 @@ from redis_past.buffer_redis import adicionar_ao_buffer, ouvinte_de_expiracao
 from agent_assistant.audio_transcription import audio_transcription
 import uvicorn
 import asyncio
+from postgres_pgvector.create_tables_vector import create_tables_pgvector
+
 
 mensagens_processadas = set()
 
@@ -38,23 +40,26 @@ async def processar_mensagens_agrupadas(numero: str, texto_final: str):
         print(f"❌ Erro ao processar mensagens agrupadas: {e}")
         mensagens_processadas.discard(hash_mensagem)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    print("🚀 Iniciando ouvinte de buffer...")
-    
-    # Cria uma task assíncrona para o ouvinte
-    task = asyncio.create_task(ouvinte_de_expiracao(processar_mensagens_agrupadas))
-    
-    print("✅ Ouvinte de buffer iniciado em background!")
+    print("🚀 Inicializando aplicação...")
+
+    # CRIA TABELAS AUTOMATICAMENTE
+    create_tables_pgvector()
+
+    print("🟢 Banco pronto!")
+
+    task = asyncio.create_task(
+        ouvinte_de_expiracao(processar_mensagens_agrupadas)
+    )
+
+    print("✅ Ouvinte iniciado!")
     yield
-    # Shutdown
-    print("🛑 Encerrando ouvinte...")
+
+    print("🛑 Encerrando aplicação...")
     task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        print("✅ Ouvinte encerrado com sucesso")
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -131,12 +136,6 @@ async def webhook(request: Request):
     except Exception as e:
         print(f"❌ Erro no webhook: {e}")
         raise HTTPException(status_code=500, detail="erro interno")
-
-@app.on_event("startup")
-async def startup_event():
-    print("🚀 Iniciando ouvinte de buffer...")
-    #iniciar_ouvinte_background(processar_mensagens_agrupadas)
-    print("✅ Ouvinte de buffer iniciado!")
 
 if __name__ == "__main__":
     print("🌐 Iniciando servidor FastAPI...")
